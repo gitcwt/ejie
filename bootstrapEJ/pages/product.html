@@ -1,0 +1,283 @@
+	<script>
+		// ======== 提前声明的代码
+		var baseURL = "http://134.175.100.63:6677";
+		function reloadData(){
+			var url = baseURL+"/product/findAll"
+			$.get(url,function(result){
+				if(result.status === 200){
+					$("#product_table tbody").empty();
+					result.data.forEach(function(item){
+						$("#product_table tbody").append($(`
+				<tr class="text-center">
+					<td><input type="checkbox" value="`+item.id+`"></td>
+					<td>`+item.name+`</td>
+					<td>`+item.price+`</td>
+					<td>`+item.description+`</td>
+					<td>`+item.categoryId+`</td>
+					<td>
+						<a href="javascript:void(0)" class="btn_del">删除</a>
+						<a href="javascript:void(0)" class="btn_upd">修改</a>
+					</td>
+				</tr>
+							`));
+					});
+				}
+			});
+		}
+		// 初始化栏目
+		function initCategory(){
+			var url = baseURL + "/category/findAll";
+			$.get(url,function(result){
+				if(result.status === 200){
+					// 清空下拉菜单
+					$("#product_form select[name=categoryId]").empty();
+					// 将栏目信息追加到下拉菜单中
+					result.data.forEach(function(item){
+						console.log(item);
+						$("#product_form select[name=categoryId]").append(`
+								<option value="`+item.id+`">`+item.name+`</option>
+							`);
+					});
+				}
+			});
+		}
+		// 关闭模态框
+		function closeProductModal(){
+			$("#productModal").modal("hide");
+		}
+		// 提交表单
+		function submitProduct(){
+			// 1. 获取参数
+			var name = $("#product_form input[name=name]").val();
+			var price = $("#product_form input[name=price]").val();
+			var categoryId = $("#product_form select[name=categoryId]").val();
+			var description = $("#product_form textarea[name=description]").val().trim();
+			var id = $("#product_form input[name=id]").val();
+
+			console.log(name,price,description,categoryId);
+			// 2. ajax
+			var url = baseURL+"/product/saveOrUpdate"
+			if(id){
+				data ={
+					name:name,
+					price:price,
+					categoryId:categoryId,
+					description:description,
+					id:id
+				      }
+			}else{
+				data = {
+				name:name,
+				price:price,
+				categoryId:categoryId,
+				description:description
+			    }
+			}
+			$.post(url,data,function(result){
+				if(result.status === 200){
+					alert(result.message);
+					$("#productModal").modal("hide");
+					reloadData();
+				} else {
+					alert(result.message);
+				}
+			});
+		}
+		// 批量删除
+   	$("#btn_batch_del").click(function(){
+			var ids = 
+			$("input[type=checkbox]:checked")
+			.map(function(index,item){
+				return $(item).val()
+			})
+			.toArray();
+			var url =baseurl+"/product/batchDelete"
+			var data = "";
+			for(var index in ids){
+				var id =ids[index];
+				if(index==0){
+					data +="ids="+id
+				}else{
+					data +="&ids="+id
+				}
+			}
+			$.post(url,data,function(result){
+				if(result.status==200){
+					alert("删除成功");
+					reloadData();
+				}else{
+					alert(result.message);
+				}
+			});
+		})
+			// 删除事件
+	   	$("#product_table>tbody").on("click","a",function(){
+	   			switch(this.className){
+	   			case "btn_del":
+			   			var url=baseURL +"/product/deleteById";
+			   			var id =$(this).parents("tr").find("input").val();
+			   			var data ="id="+id;
+			   			$.get(url,data,function(result){
+			   				if(result.status===200){
+			   					alert(result.message)
+			   					reloadData();
+			   				}else{
+			   					alert("删除失败")
+			   				}
+		   			    })
+		   			break;
+	   			    // 修改事件
+	   			case "btn_upd":
+	   			// 打开模态框把原有信息放入表单
+	   			$("#productModal").modal("show");
+	   			var url=baseURL+"/product/saveOrUpdate";
+	   			var id = $(this).parents("tr").find("input").val();
+	   			// console.log(id);
+				var name = event.target.parentNode.parentNode.children[1].innerText;
+				var price = event.target.parentNode.parentNode.children[2].innerText;
+				var description =event.target.parentNode.parentNode.children[3].innerText;
+				var categoryId =event.target.parentNode.parentNode.children[4].innerText;
+	   		 	
+				document.querySelector("input[name=name]").value = name;
+				document.querySelector("input[name=price]").value = price;
+				document.querySelector("textarea[name=description]").value = description;
+				document.querySelector("input[name=id]").value = id;
+				// console.log(document.querySelector("input[name=id]").value);
+	   		    }
+	   		
+	   	})
+		// ======== 文档加载完毕后执行
+		$(function(){
+			// 1. 初始化数据
+			reloadData();
+			
+			// 2. 为添加按钮绑定事件
+			$("#btn_add_product").click(function(){
+				$("#productModal").modal("show");
+			});
+			// 3. 监听模态框的关闭
+			$('#productModal').on('hidden.bs.modal', function (e) {
+				$(this).find("form")[0].reset();
+				$("input[name=id]").val("");
+			})
+			// 4. 监听模态框的打开
+			$('#productModal').on('show.bs.modal', function (e) {
+				// 初始化表单中的栏目下拉菜单
+				initCategory();
+			})
+
+		});
+	</script>
+</head>
+<body>
+	<nav class="nav-light">
+          <ol class="breadcrumb">
+		    <li class="breadcrumb-item" ><a href="./index.html">主页</a></li>
+		    <li class="breadcrumb-item active"><a href="#">产品管理</a></li>
+		  </ol>
+    </nav>
+	<!-- 容器 -->
+	<button type="button" class="btn btn-outline-primary btn-lg" data-toggle="modal" data-target="#productModal">
+			  添加
+			</button>
+	<button type="button" class="btn btn-outline-primary btn-lg" id="btn_batch_del" >批量删除</button>	
+	<div class="container">
+		<!-- 表格 -->
+		<table class="table" id="product_table">
+			<thead>
+				<tr class="text-center font-weight-bold">
+					<td>编号</td>
+					<td>产品名称</td>
+					<td>单价</td>
+					<td>描述</td>
+					<td>分类</td>
+					<td>操作</td>
+				</tr>
+			</thead>
+			<tbody>
+				
+			</tbody>
+		</table>
+		<!-- / 表格 -->
+	</div>
+	<!-- / 容器 -->
+	
+	<!-- 模态框 -->
+	<div class="modal fade" id="productModal" tabindex="-1">
+	  <div class="modal-dialog modal-xl" role="document">
+	    <div class="modal-content">
+	      <div class="modal-header">
+	        <h5 class="modal-title" id="exampleModalLabel">添加产品信息</h5>
+	        <button type="button" class="close" onclick="closeProductModal()">
+	          <span>&times;</span>
+	        </button>
+	      </div>
+	      <div class="modal-body">
+	  <!-- 表单 -->
+			<form action="/register" id="product_form">
+				<div>
+				     <input type="hidden" name="id">
+				</div>
+				<!-- 产品名称 -->
+				<div class="form-group row">
+					<label for="input_name" class="col-2 text-right">产品名称</label>
+					<div class="col-10" >
+						<input id="input_name" name="name" type="text" class="form-control">
+					</div>
+				</div>
+				<!-- / 产品名称 -->
+				
+				<!-- 手机 -->
+				<div class="form-group row">
+					<label for="input_price" class="col-2 text-right">产品单价</label>
+					<div class="col-10" >
+						<input id="input_price" name="price" type="text" class="form-control">
+					</div>
+				</div>
+				<!-- / 单价 -->
+				<!-- 所属栏目 -->
+				<div class="form-group row">
+					<label for="input_categoryId" class="col-2 text-right">所属栏目</label>
+					<div class="col-10" >
+						<select name="categoryId" id="input_categoryId" class="form-control" style="width: 50%">
+							
+						</select>
+					</div>
+				</div>
+				<!-- / 所属栏目 -->
+				
+				<!-- 简介 -->
+				<div class="form-group row">
+					<label for="input_description" class="col-2 text-right">简介</label>
+					<div class="col-10" >
+						<textarea id="input_description" name="description" class="form-control">
+
+						</textarea>
+					</div>
+				</div>
+				<!-- / 简介 -->
+			</form>
+			<!-- / 表单 -->     
+
+	      </div>
+	      <div class="modal-footer">
+	        <button type="button" class="btn btn-secondary" onclick="closeProductModal()">Close</button>
+	        <button type="button" class="btn btn-primary" onclick="submitProduct()">Save changes</button>
+	      </div>
+	    </div>
+	  </div>
+	</div>
+	
+
+
+	<!-- / 模态框 -->
+
+
+
+
+
+
+
+
+	
+</body>
